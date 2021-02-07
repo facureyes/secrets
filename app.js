@@ -1,9 +1,12 @@
 //jshint esversion:6
+require('dotenv').config();
 const express = require("express");
 const bodyParser = require("body-parser");
 const ejs = require("ejs");
 const mongoose = require("mongoose");
+const encrypt = require('mongoose-encryption');
 const { reduce } = require("async");
+
 
 const app = express();
 
@@ -15,7 +18,7 @@ app.set("view engine", "ejs");
 mongoose.connect("mongodb://127.0.0.1:27017/userDB", { useNewUrlParser: true, useUnifiedTopology: true});
 
 // Create a schema
-const userSchema = {
+const userSchema = new mongoose.Schema ({
     email: {
         type: String,
         required: [true, "You must your email."]
@@ -24,11 +27,13 @@ const userSchema = {
         type: String,
         required: [true, "You must set your password"]
     }
-};
+});
+
+// Create secret for encryptation
+userSchema.plugin(encrypt, {secret: process.env.SECRET, encryptedFields:["password"]});
 
 // Create a model
 const User = mongoose.model("User", userSchema);
-
 
 
 app.listen(3000, ()=>{
@@ -51,11 +56,15 @@ app.route('/login')
                     if(item.password === req.body.password){
                         res.render('secrets');
                     }
+                    else {
+                        res.render('login');
+                    }
                 }
             } else {
                 console.log(err);
+                res.render('login');
             }
-            res.render('login');
+            
         })
     })
 
@@ -79,3 +88,6 @@ app.route("/register")
         })
     })
 
+app.get('/logout', (req, res)=>{
+    res.redirect('/');
+})
