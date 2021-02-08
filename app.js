@@ -4,8 +4,7 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const ejs = require("ejs");
 const mongoose = require("mongoose");
-const md5 = require("md5");
-const { reduce } = require("async");
+const bcrypt = require('bcrypt');
 
 
 const app = express();
@@ -13,6 +12,10 @@ const app = express();
 app.use(express.static("public"));
 app.use(bodyParser.urlencoded({extended:true}));
 app.set("view engine", "ejs");
+
+// Security
+const saltRounds = 10;
+
 
 // Connect DB
 mongoose.connect("mongodb://127.0.0.1:27017/userDB", { useNewUrlParser: true, useUnifiedTopology: true});
@@ -51,12 +54,15 @@ app.route('/login')
         User.findOne({email:req.body.username}, (err, item)=>{
             if(!err){
                 if(item){
-                    if(item.password === md5(req.body.password)){
-                        res.render('secrets');
-                    }
-                    else {
-                        res.render('login');
-                    }
+                    bcrypt.compare(req.body.password, item.password, function(err, result) {
+                        if(result){
+                            res.render('secrets');
+                        }
+                        else {
+                            res.render('login');
+                        }
+                    });
+                    
                 }
             } else {
                 console.log(err);
@@ -71,19 +77,22 @@ app.route("/register")
         res.render('register');
     })
     .post((req, res)=>{
-        const newUser = new User({
-            email: req.body.username,
-            password: md5(req.body.password)
+        bcrypt.hash(req.body.password, saltRounds, function(err, hash) {
+            // Store hash in your password DB.
+            const newUser = new User({
+                email: req.body.username,
+                password: hash
+            });
+            newUser.save((err)=>{
+                if(!err){
+                    console.log("Succesfully register.");
+                    res.render('secrets');
+                } else {
+                    console.log(err);
+                    res.render("register");
+                }
+            })
         });
-        newUser.save((err)=>{
-            if(!err){
-                console.log("Succesfully register.");
-                res.render('secrets');
-            } else {
-                console.log(err);
-                res.render("register");
-            }
-        })
     })
 
 app.get('/logout', (req, res)=>{
