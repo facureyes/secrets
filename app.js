@@ -120,11 +120,15 @@ app.get('/auth/facebook/secrets', passport.authenticate('facebook', { successRed
 
 
 app.get('/secrets', (req, res)=>{
-    if (req.isAuthenticated()){
-        res.render('secrets');
-    } else {
-        res.redirect('/login');
-    }
+    User.find({"secret":{$ne: null}}, (err, foundUsers)=>{
+        if(!err){
+            if (foundUsers){
+                res.render("secrets", {usersWithSecrets: foundUsers});
+            }
+        } else {
+            console.log(err);
+        }
+    })
 });
 
 app.route('/login')
